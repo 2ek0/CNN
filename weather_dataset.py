@@ -290,7 +290,7 @@ class WeatherDataSet(object):
             return batch_images, batch_labels, batch_ids, batch_cls
 
 
-def read_weather_sets_with_clustering(json_dir, image_dir, image_size=128, use_features=True, n_clusters=5):
+def read_weather_sets_with_clustering(json_dir, image_dir, image_size=128, use_features=True, n_clusters=5, ablation_features=None, ablation_no_image=False):
     """
     Read weather datasets using K-means clustering for classification.
     
