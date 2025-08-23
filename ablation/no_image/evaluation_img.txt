@@ -1,0 +1,42 @@
+Validation Accuracy: 98.4945%
+Model saved to D:\Image\test_result\models\weather_cnn_model_img.h5
+Model saved to D:\Image\test_result\models\weather_cnn_model_img.h5
+[1m294/294[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m8s[0m 28ms/step - accuracy: 0.9835 - loss: 0.0396
+[1m294/294[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m8s[0m 28ms/step - accuracy: 0.9835 - loss: 0.0396
+Test Accuracy: 98.3509%
+Test Loss: 0.0396
+Test Accuracy: 98.3509%
+Test Loss: 0.0396
+[1m294/294[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m8s[0m 27ms/step
+[1m294/294[0m [32m━━━━━━━━━━━━━━━━━━━━[0m[37m[0m [1m8s[0m 27ms/step
+Accuracy: 98.3509%
+Precision: 98.3567%
+Recall: 98.3509%
+F1-score: 98.3522%
+              precision    recall  f1-score   support
+
+           0       1.00      1.00      1.00      3657
+           1       0.96      0.98      0.97       866
+           2       0.97      0.98      0.97      1436
+           3       0.97      0.97      0.97       902
+           4       0.99      0.98      0.98      2538
+
+    accuracy                           0.98      9399
+   macro avg       0.98      0.98      0.98      9399
+weighted avg       0.98      0.98      0.98      9399
+
+Accuracy: 98.3509%
+Precision: 98.3567%
+Recall: 98.3509%
+F1-score: 98.3522%
+              precision    recall  f1-score   support
+
+           0       1.00      1.00      1.00      3657
+           1       0.96      0.98      0.97       866
+           2       0.97      0.98      0.97      1436
+           3       0.97      0.97      0.97       902
+           4       0.99      0.98      0.98      2538
+
+    accuracy                           0.98      9399
+   macro avg       0.98      0.98      0.98      9399
+weighted avg       0.98      0.98      0.98      9399
