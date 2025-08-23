@@ -305,6 +305,7 @@ def read_weather_sets_with_clustering(json_dir, image_dir, image_size=128, use_f
     Returns:
         DataSets object with train and validation sets, plus clustering info
     """
+
     class DataSets(object):
         pass
 
@@ -320,89 +321,32 @@ def read_weather_sets_with_clustering(json_dir, image_dir, image_size=128, use_f
     if 'ablation_no_image' in values:
         ablation_no_image = values['ablation_no_image']
 
-    split_dir = os.path.join(image_dir, 'split_cache')
-    os.makedirs(split_dir, exist_ok=True)
-    split_file = os.path.join(split_dir, f'split_ncl{n_clusters}_featuresTrue.pkl')
-
-    if os.path.exists(split_file):
-        with open(split_file, 'rb') as f:
-            split_data = pickle.load(f)
-        images = split_data['images']
-        labels = split_data['labels']
-        ids = split_data['ids']
-        cls = split_data['cls']
-        features = split_data['features']
-        metadata = split_data['metadata']
-        kmeans_model = split_data['kmeans_model']
-        cluster_descriptions = split_data['cluster_descriptions']
-        X_train_images = split_data['X_train_images']
-        X_val_images = split_data['X_val_images']
-        X_test_images = split_data['X_test_images']
-        X_train_features = split_data['X_train_features']
-        X_val_features = split_data['X_val_features']
-        X_test_features = split_data['X_test_features']
-        Y_train = split_data['Y_train']
-        Y_val = split_data['Y_val']
-        Y_test = split_data['Y_test']
-        ids_train = split_data['ids_train']
-        ids_val = split_data['ids_val']
-        ids_test = split_data['ids_test']
-        cls_train = split_data['cls_train']
-        cls_val = split_data['cls_val']
-        cls_test = split_data['cls_test']
+    # Instead of loading/saving images arrays, only load and split ids, features, labels, cls
+    # Load metadata and cluster info
+    images, labels, ids, cls, metadata, kmeans_model = load_weather_data_with_clustering(
+        json_dir, image_dir, image_size if image_size else 128, n_clusters
+    )
+    cluster_descriptions = get_cluster_characteristics(metadata, kmeans_model)
+    features = None
+    if use_features:
+        features = create_weather_features(metadata)
+        scaler = StandardScaler()
+        features = scaler.fit_transform(features)
+    # Shuffle data
+    if features is not None:
+        ids, labels, cls, features = shuffle(ids, labels, cls, features)
     else:
-        images, labels, ids, cls, metadata, kmeans_model = load_weather_data_with_clustering(
-            json_dir, image_dir, image_size, n_clusters
-        )
-        cluster_descriptions = get_cluster_characteristics(metadata, kmeans_model)
-        features = None
-        if use_features:
-            features = create_weather_features(metadata)
-            scaler = StandardScaler()
-            features = scaler.fit_transform(features)
-        # Shuffle data
-        if features is not None:
-            images, labels, ids, cls, features = shuffle(images, labels, ids, cls, features)
-        else:
-            images, labels, ids, cls = shuffle(images, labels, ids, cls)
-        # Split into train, validation, and test sets (10% test, 20% validation, 70% train)
-        X_temp_images, X_test_images, X_temp_features, X_test_features, Y_temp, Y_test, ids_temp, ids_test, cls_temp, cls_test = train_test_split(
-            images, features, labels, ids, cls, test_size=0.10, random_state=42, stratify=cls
-        )
-        val_size = 0.2 / 0.9
-        X_train_images, X_val_images, X_train_features, X_val_features, Y_train, Y_val, ids_train, ids_val, cls_train, cls_val = train_test_split(
-            X_temp_images, X_temp_features, Y_temp, ids_temp, cls_temp, test_size=val_size, random_state=42, stratify=cls_temp
-        )
-        # Save split
-        with open(split_file, 'wb') as f:
-            pickle.dump({
-                'images': images,
-                'labels': labels,
-                'ids': ids,
-                'cls': cls,
-                'features': features,
-                'metadata': metadata,
-                'kmeans_model': kmeans_model,
-                'cluster_descriptions': cluster_descriptions,
-                'X_train_images': X_train_images,
-                'X_val_images': X_val_images,
-                'X_test_images': X_test_images,
-                'X_train_features': X_train_features,
-                'X_val_features': X_val_features,
-                'X_test_features': X_test_features,
-                'Y_train': Y_train,
-                'Y_val': Y_val,
-                'Y_test': Y_test,
-                'ids_train': ids_train,
-                'ids_val': ids_val,
-                'ids_test': ids_test,
-                'cls_train': cls_train,
-                'cls_val': cls_val,
-                'cls_test': cls_test
-            }, f)
+        ids, labels, cls = shuffle(ids, labels, cls)
+    # Split into train, validation, and test sets (10% test, 20% validation, 70% train)
+    ids_temp, ids_test, features_temp, features_test, labels_temp, labels_test, cls_temp, cls_test = train_test_split(
+        ids, features, labels, cls, test_size=0.10, random_state=42, stratify=cls
+    )
+    val_size = 0.2 / 0.9
+    ids_train, ids_val, features_train, features_val, labels_train, labels_val, cls_train, cls_val = train_test_split(
+        ids_temp, features_temp, labels_temp, cls_temp, test_size=val_size, random_state=42, stratify=cls_temp
+    )
 
     # Apply ablation after loading split
-    # Remove selected features
     if use_features and ablation_features:
         feature_indices = {
             'cloud_coverage': 0,
@@ -410,7 +354,7 @@ def read_weather_sets_with_clustering(json_dir, image_dir, image_size=128, use_f
             'irradiance': 2,
             'time': [3,4,5,6]
         }
-        keep_idx = list(range(X_train_features.shape[1]))
+        keep_idx = list(range(features_train.shape[1]))
         for feat in ablation_features:
             idx = feature_indices[feat]
             if isinstance(idx, list):
@@ -418,20 +362,33 @@ def read_weather_sets_with_clustering(json_dir, image_dir, image_size=128, use_f
                     keep_idx.remove(i)
             else:
                 keep_idx.remove(idx)
-        X_train_features = X_train_features[:, keep_idx]
-        X_val_features = X_val_features[:, keep_idx]
-        X_test_features = X_test_features[:, keep_idx]
+        features_train = features_train[:, keep_idx]
+        features_val = features_val[:, keep_idx]
+        features_test = features_test[:, keep_idx]
 
-    # Remove image branch if requested
+    # Remove image branch if requested (handled in notebook, so just pass empty list if needed)
     if ablation_no_image:
-        X_train_images = np.zeros_like(X_train_images)
-        X_val_images = np.zeros_like(X_val_images)
-        X_test_images = np.zeros_like(X_test_images)
+        ids_train = []
+        ids_val = []
+        ids_test = []
 
+    # Return only ids, features, labels, cls for each split
     data_sets = DataSets()
-    data_sets.train = WeatherDataSet(X_train_images, Y_train, ids_train, cls_train, X_train_features)
-    data_sets.valid = WeatherDataSet(X_val_images, Y_val, ids_val, cls_val, X_val_features)
-    data_sets.test = WeatherDataSet(X_test_images, Y_test, ids_test, cls_test, X_test_features)
+    data_sets.train = type('Split', (), {})()
+    data_sets.valid = type('Split', (), {})()
+    data_sets.test = type('Split', (), {})()
+    data_sets.train.ids = ids_train
+    data_sets.train.features = features_train
+    data_sets.train.labels = labels_train
+    data_sets.train.cls = cls_train
+    data_sets.valid.ids = ids_val
+    data_sets.valid.features = features_val
+    data_sets.valid.labels = labels_val
+    data_sets.valid.cls = cls_val
+    data_sets.test.ids = ids_test
+    data_sets.test.features = features_test
+    data_sets.test.labels = labels_test
+    data_sets.test.cls = cls_test
     data_sets.cluster_descriptions = cluster_descriptions
     data_sets.kmeans_model = kmeans_model
     data_sets.metadata = metadata
